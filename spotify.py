@@ -1,14 +1,14 @@
-import spotipy
+import spotipy                      # da scaricare ('sarebbe consigliato creare un ambiente virtuale')
 import spotipy.util as util
 import os
 import time
 import configparser
 
 
-# con questo programma salteremo la pubblicità in spotify ;)
+# Con questo programma molto base salteremo la pubblicità su Spotify per account non premium ;)
 
 
-#config parser
+# Config parser
 config = configparser.ConfigParser()
 config.read('config.ini')
 
@@ -35,7 +35,7 @@ while True:
     if(current['item'] == None):
         os.popen("pkill spotify")       # chiude il processo
         os.popen("spotify")             # apre di nuovo il processo
-        #sp.start_playback()             # riprende la canzone in automatico
+        #sp.start_playback()            # riprende la canzone in automatico pero' e' una funzione premium
         time.sleep(10)
     
     if(current['item'] != None and current['item']['name'] != song['item']['name']):
