@@ -21,6 +21,8 @@ SCOPE = 'user-read-playback-state user-read-currently-playing'
 # Autorizzazione dell'utente
 username = config['spotify']['username']
 token = util.prompt_for_user_token(username, SCOPE, CLIENT_ID, CLIENT_SECRET, REDIRECT_URI)
+tempo_attesa = 3
+
 
 # Piccolo template per stampare su console, avrebbe bisogno di controlli maggiori sull'input
 def print_canzone(song):
@@ -52,12 +54,13 @@ def main():
         try:
             print("Apertura automatica di Spotify")
             os.popen("spotify")
-            time.sleep(3)
+            time.sleep(tempo_attesa)
         except:
             # non fare nulla
             print("")
 
     if(song != None and song['item'] != None):
+        print("--------------------------")
         print_canzone(song)
 
     while True:
@@ -80,13 +83,13 @@ def main():
             os.popen("pkill spotify")       # chiude il processo
             os.popen("spotify")             # apre di nuovo il processo
             #sp.start_playback()            # riprende la canzone in automatico pero' e' una funzione premium
-            time.sleep(3)
+            time.sleep(tempo_attesa)
         
         if(current['item'] != None and current['item']['name'] != song['item']['name']):
             song = current
             print_canzone(song)
 
-        time.sleep(3)
+        time.sleep(tempo_attesa)
 
     return
 
