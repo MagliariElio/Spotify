@@ -2,7 +2,7 @@
 Nel repository è presente un programma molto grezzo che 
 tenta di saltare le pubblicità di un account spotify non premium.
 
-# Requisiti
+## Requisiti
 <li> spotipy </>
 
 Verrà utilizzta la libreria spotipy, pertanto sarà necessario installare prima 
