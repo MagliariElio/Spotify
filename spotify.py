@@ -38,7 +38,7 @@ while True:
         #sp.start_playback()             # riprende la canzone in automatico
         time.sleep(10)
     
-    if(current['item'] != None & current['item']['name'] != song['item']['name']):
+    if(current['item'] != None and current['item']['name'] != song['item']['name']):
         song = current
         print("Canzone: '" + song['item']['name'] + "'\nAlbum: '" + song['item']['album']['name'] + "'\nAutore: '" + song['item']['album']['artists'][0]['name'] + "'\n")
 
