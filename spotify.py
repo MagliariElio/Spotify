@@ -11,11 +11,15 @@ import signal
 
 
 tempo_attesa = 3
-tempo_attesa_chiusura_pubblicita = 1
+tempo_attesa_chiusura_pubblicita = 1.7
 application = None
 
 # Gestione eventi keyboard
 def signal_handler(sig, frame):
+    closing()
+    
+# Semplice funzione che raccoglie la logica di chiusura
+def closing():
     print("\nClosing all process\n")
     if(application != None):
         application.terminate()
@@ -88,6 +92,20 @@ def main():
 
     return
 
+
+def check_exception():
+    # Main
+    try:
+        main()
+    except Exception as e:
+        print("Errore gestito: ", str(e))
+        token = util.prompt_for_user_token(username, SCOPE, CLIENT_ID, CLIENT_SECRET, REDIRECT_URI)
+        sp = spotipy.Spotify(auth=token)
+        check_exception()
+    return
+
+
+
 if(__name__ == '__main__'):
     # Config parser
     config = configparser.ConfigParser()
@@ -106,6 +124,5 @@ if(__name__ == '__main__'):
     # Dichiarazione gestione eventi
     signal.signal(signal.SIGINT, signal_handler)
     
-    # Main
-    main()
-    
+    check_exception()           # modo veloce per gestire le eccezioni e lasciarlo in stato di running
+    closing()                   # chiusura applicazione
