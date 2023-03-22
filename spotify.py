@@ -5,6 +5,7 @@ import subprocess
 import time
 import configparser
 import signal
+from spotipy.oauth2 import SpotifyOAuth
 
 
 # Con questo programma molto base salteremo la pubblicità su Spotify per account non premium ;)
@@ -46,7 +47,6 @@ def print_canzone(song):
 
 def main():
     # Creazione dell'oggetto Spotipy
-    sp = spotipy.Spotify(auth=token)
     song = sp.current_playback()
 
     # Nel caso l'applicazione fosse chiusa, viene aperta automaticamente forkando un processo
@@ -74,7 +74,8 @@ def main():
             continue
         
         if(current['item'] == None):
-            print("Advertising\n")
+            print("\nAdvertising\n")
+            print(current)
             
             time.sleep(tempo_attesa_chiusura_pubblicita)            # tempo necessario per far saltare in automatico all'applicazione alla prossima canzone, 
                                                                     # altrimenti bisognerebbe usare il metodo start_playback() ma è una funzione degli account premiumt 
@@ -99,8 +100,7 @@ def check_exception():
         main()
     except Exception as e:
         print("Errore gestito: ", str(e))
-        token = util.prompt_for_user_token(username, SCOPE, CLIENT_ID, CLIENT_SECRET, REDIRECT_URI)
-        sp = spotipy.Spotify(auth=token)
+        sp_oauth.refresh_access_token(token)
         check_exception()
     return
 
@@ -121,6 +121,13 @@ if(__name__ == '__main__'):
     username = config['spotify']['username']
     token = util.prompt_for_user_token(username, SCOPE, CLIENT_ID, CLIENT_SECRET, REDIRECT_URI)
     
+    # Autenticazione
+    sp_oauth = SpotifyOAuth(username=username,
+                                                        client_id=CLIENT_ID,
+                                                        client_secret=CLIENT_SECRET,
+                                                        redirect_uri=REDIRECT_URI)
+    sp = spotipy.Spotify(auth_manager=sp_oauth)
+
     # Dichiarazione gestione eventi
     signal.signal(signal.SIGINT, signal_handler)
     
