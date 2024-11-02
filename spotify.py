@@ -1,4 +1,4 @@
-import spotipy                      # da scaricare ('sarebbe consigliato creare un ambiente virtuale')
+import spotipy  # Make sure to install Spotipy
 import spotipy.util as util
 import os
 import subprocess
@@ -7,129 +7,132 @@ import configparser
 import signal
 from spotipy.oauth2 import SpotifyOAuth
 
-
-# Con questo programma molto base salteremo la pubblicità su Spotify per account non premium ;)
-
-
-tempo_attesa = 3
-tempo_attesa_chiusura_pubblicita = 1.7
+# Constants for timing
+WAIT_TIME = 3
+AD_CLOSE_WAIT_TIME = 1.7
 application = None
 
-# Gestione eventi keyboard
+class Song:
+    """Class to represent a song with relevant details."""
+
+    def __init__(self, name, album, artist):
+        self.name = name
+        self.album = album
+        self.artist = artist
+
+    @classmethod
+    def from_spotify_data(cls, item):
+        """Create a Song instance from Spotify item data."""
+        name = item['name']
+        album = item['album']['name']
+        artist = item['album']['artists'][0]['name']
+        return cls(name, album, artist)
+
+    def display(self):
+        """Print song details to the console."""
+        print(f" Song: '{self.name}'")
+        print(f" Album: '{self.album}'")
+        print(f" Artist: '{self.artist}'")
+        print("--------------------------")
+
+# Signal handler for graceful exit
 def signal_handler(sig, frame):
     closing()
-    
-# Semplice funzione che raccoglie la logica di chiusura
+
+# Function to handle application closure
 def closing():
-    print("\nClosing all process\n")
-    if(application != None):
+    print("\nClosing all processes...\n")
+    if application is not None:
         application.terminate()
-    exit(1)
+    exit(0)
 
-# Piccolo template per stampare su console, avrebbe bisogno di controlli maggiori sull'input
-def print_canzone(song):
-    if(song == None or song['item'] == None):
-        return
-    
-    if(song['item']['name'] != None):
-        print(" Song: '" + song['item']['name'] + "'")
-    
-    if(song['item']['album']['name'] != None):
-        print(" Album: '" + song['item']['album']['name'] + "'")
-    
-    if(song['item']['album']['artists'][0]['name'] != None):
-        print(" Author: '" + song['item']['album']['artists'][0]['name'] + "'")
-    
-    print("--------------------------")
-    
-    return
-
-
+# Main functionality to skip ads on Spotify
 def main():
-    # Creazione dell'oggetto Spotipy
-    song = sp.current_playback()
+    global application
+    song_data = sp.current_playback()
 
-    # Nel caso l'applicazione fosse chiusa, viene aperta automaticamente forkando un processo
-    if(song == None):
+    # If Spotify is not running, launch it
+    if song_data is None:
         try:
-            print("Automatic opening of Spotify")
-            application = subprocess.Popen(["spotify"])                         # comando da terminale per aprire spotify
-            time.sleep(tempo_attesa)
-        except:
-            print("")                                   # non fare nulla
+            print("Launching Spotify automatically...")
+            application = subprocess.Popen(["spotify"])  # Command to launch Spotify
+            time.sleep(WAIT_TIME)
+        except Exception as e:
+            print(f"Error launching process: {e}")
+            return
 
-    if(song != None and song['item'] != None):
+    current_song = Song.from_spotify_data(song_data['item']) if song_data and song_data.get('item') else None
+
+    # Display current song information if available
+    if current_song:
         print("--------------------------")
-        print_canzone(song)
+        current_song.display()
 
     while True:
-        current = sp.current_playback()
-        
-        if(current == None or song == None):
-            current = sp.current_playback()
-            song = current
-            if(song != None):
+        current_data = sp.current_playback()
+
+        # Check if Spotify is playing something
+        if current_data is None:
+            current_data = sp.current_playback()
+            current_song = Song.from_spotify_data(current_data['item']) if current_data and current_data.get('item') else None
+            if current_song:
                 print("--------------------------")
-                print_canzone(song)
+                current_song.display()
             continue
-        
-        if(current['item'] == None):
-            print("\nAdvertising\n")
-            print(current)
-            
-            time.sleep(tempo_attesa_chiusura_pubblicita)            # tempo necessario per far saltare in automatico all'applicazione alla prossima canzone, 
-                                                                    # altrimenti bisognerebbe usare il metodo start_playback() ma è una funzione degli account premiumt 
-            
-            os.popen("pkill spotify")                               # chiude il processo
-            application = subprocess.Popen(["spotify"])               # apre di nuovo il processo
-            #sp.start_playback()                                    # riprende la canzone in automatico pero' e' una funzione premium
-            time.sleep(tempo_attesa)
-        
-        if(current['item'] != None and current['item']['name'] != song['item']['name']):
-            song = current
-            print_canzone(song)
 
-        time.sleep(tempo_attesa)
+        # Check if the current playback is an ad
+        if current_data['item'] is None and current_data['currently_playing_type'] != 'episode':
+            print("\nAdvertising detected...\n")
+            print(current_data)
 
-    return
+            time.sleep(AD_CLOSE_WAIT_TIME)  # Wait before closing the ad
 
+            os.system("pkill spotify")  # Terminate Spotify
+            application = subprocess.Popen(["spotify"])  # Relaunch Spotify
+            time.sleep(WAIT_TIME)
 
+        # Detect song changes
+        if (current_data['item'] and current_data['item']['name'] and
+                current_song and current_song.name and current_data['item']['name'] != current_song.name):
+            current_song = Song.from_spotify_data(current_data['item'])
+            current_song.display()
+
+        time.sleep(WAIT_TIME)
+
+# Function to handle exceptions
 def check_exception():
-    # Main
     try:
         main()
     except Exception as e:
-        print("Errore gestito: ", str(e))
-        sp_oauth.refresh_access_token(token)
+        print(f"Handled error: {str(e)}")
+        sp = spotipy.Spotify(auth_manager=sp_oauth)  # Reinitialize Spotipy
         check_exception()
-    return
 
-
-
-if(__name__ == '__main__'):
-    # Config parser
+if __name__ == '__main__':
+    # Config parser for reading Spotify credentials
     config = configparser.ConfigParser()
     config.read('config.ini')
 
-    # Impostazione delle credenziali di accesso
+    # Set up Spotify API credentials
     CLIENT_ID = config['spotify']['client_id']
     CLIENT_SECRET = config['spotify']['client_secret']
     REDIRECT_URI = config['spotify']['redirect_uri']
     SCOPE = 'user-read-playback-state user-read-currently-playing'
 
-    # Autorizzazione dell'utente
+    # Authorize user and obtain token
     username = config['spotify']['username']
     token = util.prompt_for_user_token(username, SCOPE, CLIENT_ID, CLIENT_SECRET, REDIRECT_URI)
-    
-    # Autenticazione
+
+    # Initialize Spotify client with OAuth
     sp_oauth = SpotifyOAuth(username=username,
-                                                        client_id=CLIENT_ID,
-                                                        client_secret=CLIENT_SECRET,
-                                                        redirect_uri=REDIRECT_URI)
+                            client_id=CLIENT_ID,
+                            client_secret=CLIENT_SECRET,
+                            redirect_uri=REDIRECT_URI)
     sp = spotipy.Spotify(auth_manager=sp_oauth)
 
-    # Dichiarazione gestione eventi
+    # Set up signal handling for graceful shutdown
     signal.signal(signal.SIGINT, signal_handler)
-    
-    check_exception()           # modo veloce per gestire le eccezioni e lasciarlo in stato di running
-    closing()                   # chiusura applicazione
+
+    # Start the main process with exception handling
+    check_exception()
+    closing()  # Close application on exit
